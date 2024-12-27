@@ -2,16 +2,22 @@
 ### [[Project]](https://fudan-zvg.github.io/ref-gaussian) [[Paper]](TODO) 
 
 > [**Reflective Gaussian Splatting**](TODO),            
-> Yuxuan Yao, Zixuan Zeng, [Chun Gu](https://sulvxiangxin.github.io/), [Xiatian Zhu](https://surrey-uplab.github.io/), [Li Zhang](https://lzrobots.github.io)  
+> [Yuxuan Yao](https://yaoyuxuanyyds.github.io/), Zixuan Zeng, [Chun Gu](https://sulvxiangxin.github.io/), [Xiatian Zhu](https://surrey-uplab.github.io/), [Li Zhang](https://lzrobots.github.io)  
 > **Arxiv preprint**
 
 **Official implementation of "Reflective Gaussian Splatting".** 
+
+## 🎥 Video
+
+https://github.com/user-attachments/assets/99a9b449-f7b0-4db0-8f97-2ce5a5f5639d
 
 
 ## 🛠️ Pipeline
 <div align="center">
   <img src="assets/pipeline.png"/>
 </div><br/>
+
+
 
 ## 📜 BibTeX
 ```bibtex
