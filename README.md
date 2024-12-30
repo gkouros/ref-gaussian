@@ -1,7 +1,7 @@
 # Ref-Gaussian: Reflective Gaussian Splatting
-### [[Project]](https://fudan-zvg.github.io/ref-gaussian) [[Paper]](TODO) 
+### [[Project]](https://fudan-zvg.github.io/ref-gaussian) [[Paper]](https://arxiv.org/abs/2412.19282)
 
-> [**Reflective Gaussian Splatting**](TODO),            
+> [**Reflective Gaussian Splatting**](https://arxiv.org/abs/2412.19282),            
 > [Yuxuan Yao](https://yaoyuxuanyyds.github.io/), Zixuan Zeng, [Chun Gu](https://sulvxiangxin.github.io/), [Xiatian Zhu](https://surrey-uplab.github.io/), [Li Zhang](https://lzrobots.github.io)  
 > **Arxiv preprint**
 
