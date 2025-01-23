@@ -3,7 +3,7 @@
 
 > [**Reflective Gaussian Splatting**](https://arxiv.org/abs/2412.19282),            
 > [Yuxuan Yao](https://yaoyuxuanyyds.github.io/), Zixuan Zeng, [Chun Gu](https://sulvxiangxin.github.io/), [Xiatian Zhu](https://surrey-uplab.github.io/), [Li Zhang](https://lzrobots.github.io)  
-> **Arxiv preprint**
+> **ICLR 2025**
 
 **Official implementation of "Reflective Gaussian Splatting".** 
 
