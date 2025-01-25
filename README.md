@@ -21,10 +21,10 @@ https://github.com/user-attachments/assets/99a9b449-f7b0-4db0-8f97-2ce5a5f5639d
 
 ## 📜 BibTeX
 ```bibtex
-@article{yao2024refGS,
+@inproceedings{yao2025refGS,
   title={Reflective Gaussian Splatting},
   author={Yao, Yuxuan and Zeng, Zixuan and Gu, Chun and Zhu, Xiatian and Zhang, Li},
-  journal={arXiv preprint},
-  year={2024},
+  booktitle={ICLR},
+  year={2025},
 }
 ```
