@@ -47,7 +47,12 @@ def _get_plugin():
 
     # Linker options.
     if os.name == 'posix':
-        ldflags = ['-lcuda', '-lnvrtc']
+        ldflags = [
+            '-lcuda',
+            '-lnvrtc',
+            f"-L{os.environ['CONDA_PREFIX']}/lib/stubs",
+            f"-L{os.environ['CONDA_PREFIX']}/lib64/stubs",
+        ]
     elif os.name == 'nt':
         ldflags = ['cuda.lib', 'advapi32.lib', 'nvrtc.lib']
 
@@ -76,7 +81,13 @@ def _get_plugin():
     # Compile and load.
     source_paths = [os.path.join(os.path.dirname(__file__), fn) for fn in source_files]
     torch.utils.cpp_extension.load(name='renderutils_plugin', sources=source_paths, extra_cflags=opts,
-         extra_cuda_cflags=opts, extra_ldflags=ldflags, with_cuda=True, verbose=True)
+        extra_cuda_cflags=opts + [
+            # override NVCC’s compiler check
+            '-allow-unsupported-compiler',
+            # enable extended‐float typedefs in host headers
+            '--compiler-options', '-D__STDC_WANT_IEC_60559_TYPES_EXT__=1'
+        ],
+         extra_ldflags=ldflags, with_cuda=True, verbose=True)
 
     # Import, cache, and return the compiled module.
     import renderutils_plugin
