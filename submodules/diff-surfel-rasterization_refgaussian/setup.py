@@ -15,12 +15,12 @@ import os
 os.path.dirname(os.path.abspath(__file__))
 
 setup(
-    name="diff_surfel_rasterization",
-    packages=['diff_surfel_rasterization'],
+    name="diff_surfel_rasterization_refgaussian",
+    packages=['diff_surfel_rasterization_refgaussian'],
     version='0.0.1',
     ext_modules=[
         CUDAExtension(
-            name="diff_surfel_rasterization._C",
+            name="diff_surfel_rasterization_refgaussian._C",
             sources=[
             "cuda_rasterizer/rasterizer_impl.cu",
             "cuda_rasterizer/forward.cu",

@@ -213,7 +213,7 @@ int CudaRasterizer::Rasterizer::forward(
 	const float scale_modifier,
 	const float* rotations,
 	const float* transMat_precomp,
-		const float* viewmatrix,
+	const float* viewmatrix,
 	const float* projmatrix,
 	const float* cam_pos,
 	const float tan_fovx, float tan_fovy,
