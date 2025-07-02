@@ -1,3 +1,0 @@
-[submodule "submodules/raytracing/submodules/nvdiffrast"]
-	path = submodules/raytracing/submodules/nvdiffrast
-	url = https://github.com/NVlabs/nvdiffrast

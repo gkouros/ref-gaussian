@@ -1,3 +1,4 @@
+# don't use
 name: ref-gaussian
 channels:
   - pytorch
@@ -10,6 +11,7 @@ dependencies:
   - gcc_linux-64=12
   - gxx_linux-64=12
   - typing_extensions=4.9.0
+  - eigen=3.7.7
   pip:
     - backend==0.2.4.1
     - cubemapencoder==0.0.0
