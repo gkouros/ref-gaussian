@@ -9,10 +9,19 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib64/:$CONDA_PREFIX/bin/:$CONDA_PREFIX/li
 export LDFLAGS="-L$CONDA_PREFIX/lib/stubs -L$CONDA_PREFIX/lib64/stubs"
 
 python train.py -s data/glossy_synthetic/angel --eval --white_background   
-python train.py -s data/glossy_synthetic/potion --eval  --white_background   
+python train.py -s data/glossy_synthetic/bell --eval  --white_background   
+python train.py -s data/glossy_synthetic/cat --eval  --white_background
 python train.py -s data/glossy_synthetic/horse --eval  --white_background   
 python train.py -s data/glossy_synthetic/luyu --eval  --white_background    
-python train.py -s data/glossy_synthetic/teapot --eval  --white_background 
-python train.py -s data/glossy_synthetic/bell --eval  --white_background   
+python train.py -s data/glossy_synthetic/potion --eval  --white_background   
 python train.py -s data/glossy_synthetic/tbell --eval  --white_background  --lambda_normal_smooth 1.0
-python train.py -s data/glossy_synthetic/cat --eval  --white_background
+python train.py -s data/glossy_synthetic/teapot --eval  --white_background 
+
+python eval.py --white_background --save_images --model_path data/glossy_synthetic/angel
+python eval.py --white_background --save_images --model_path data/glossy_synthetic/bell
+python eval.py --white_background --save_images --model_path data/glossy_synthetic/cat
+python eval.py --white_background --save_images --model_path data/glossy_synthetic/horse
+python eval.py --white_background --save_images --model_path data/glossy_synthetic/luyu
+python eval.py --white_background --save_images --model_path data/glossy_synthetic/potion
+python eval.py --white_background --save_images --model_path data/glossy_synthetic/tbell
+python eval.py --white_background --save_images --model_path data/glossy_synthetic/teapot

@@ -16,3 +16,12 @@ python train.py -s data/nerf_synthetic/lego --eval --white_background
 python train.py -s data/nerf_synthetic/materials --eval --white_background
 python train.py -s data/nerf_synthetic/mic --eval --white_background
 python train.py -s data/nerf_synthetic/ship --eval --white_background
+
+python eval.py --white_background --save_images --model_path data/nerf_synthetic/chair
+python eval.py --white_background --save_images --model_path data/nerf_synthetic/drums
+python eval.py --white_background --save_images --model_path data/nerf_synthetic/ficus
+python eval.py --white_background --save_images --model_path data/nerf_synthetic/hotdog
+python eval.py --white_background --save_images --model_path data/nerf_synthetic/lego
+python eval.py --white_background --save_images --model_path data/nerf_synthetic/materials
+python eval.py --white_background --save_images --model_path data/nerf_synthetic/mic
+python eval.py --white_background --save_images --model_path data/nerf_synthetic/ship
