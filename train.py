@@ -16,7 +16,9 @@ from random import randint
 from utils.loss_utils import calculate_loss, l1_loss
 from gaussian_renderer import render_surfel, render_initial, render_volume, network_gui
 import sys
+import viser
 from scene import Scene, GaussianModel
+from scene.cameras import Camera
 from utils.general_utils import safe_state
 import numpy as np
 from tqdm import tqdm
@@ -40,7 +42,7 @@ except ImportError:
 
 
 
-def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint, model_path, debug_from=None):
+def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint, model_path, debug_from=None, server=None):
     first_iter = 0
     tb_writer = prepare_output_and_logger()
 
@@ -262,12 +264,139 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
 
         iteration += 1
 
+        if server is None or server["client"] is None:
+            continue
 
+        render_type = network_gui.on_gui_change()
+        with torch.no_grad():
+            client = server["client"]
+            RT_w2v = viser.transforms.SE3(wxyz_xyz=np.concatenate([client.camera.wxyz, client.camera.position], axis=-1)).inverse()
+            R = torch.tensor(RT_w2v.rotation().as_matrix().astype(np.float32)).numpy()
+            T = torch.tensor(RT_w2v.translation().astype(np.float32)).numpy()
+            FoVx = viewpoint_cam.FoVx # TODO: client fov
+            FoVy = viewpoint_cam.FoVy
 
+            camera = Camera(
+                colmap_id=None,
+                R=R,
+                T=T,
+                FoVx=FoVx,
+                FoVy=FoVy,
+                image=gt_image,
+                gt_alpha_mask = None,
+                image_name="",
+                HWK=viewpoint_cam.HWK,
+                uid=None,
+            )
 
+            render_pkg = render(camera, gaussians, pipe, background, srgb=opt.srgb, opt=opt)
+            image = render_pkg["render"]
+            alpha_map = render_pkg["rend_alpha"]
+            rend_normal = render_pkg['rend_normal']
+            surf_normal = render_pkg['surf_normal']
+            diffuse_map = render_pkg['diffuse_map']
+            albedo_map = render_pkg['base_color_map']
+            roughness_map =  render_pkg['roughness_map']
+            specular_color = render_pkg['specular_map']
+            metallic = render_pkg['refl_strength_map']
+            visibility = render_pkg['visibility'] if 'visibility' in render_pkg else torch.ones_like(metallic)
+            direct_light = render_pkg['direct_light'] if 'direct_light' in render_pkg else torch.zeros_like(albedo_map)
+            indirect_light = render_pkg['indirect_light'] if 'indirect_light' in render_pkg else torch.zeros_like(albedo_map)
+            env_dict = gaussians.render_env_map()
+            grid = [env_dict["env1"].permute(2, 0, 1), env_dict["env2"].permute(2, 0, 1)]
+            envmap1 = make_grid(grid[0], nrow=1, padding=10)
+            envmap2 = make_grid(grid[1], nrow=1, padding=10)
 
+            output = None
+            if render_type == "Rendered":
+                image = torch.clamp(image, 0.0, 1.0)
+                rendered_image = image.cpu().permute(1, 2, 0)
+                rendered_image = rendered_image * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            elif render_type == "render normal":
+                rendered_image = (rend_normal.cpu().permute(1, 2, 0) + 1) / 2.0
+                rendered_image = rendered_image * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            elif render_type == "surf normal":
+                rendered_image = (surf_normal.cpu().permute(1, 2, 0) + 1) / 2.0
+                rendered_image = rendered_image * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            elif render_type == "albedo":
+                image = torch.clamp(albedo_map, 0.0, 1.0)
+                rendered_image = image.cpu().permute(1, 2, 0)
+                rendered_image = rendered_image * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            elif render_type == "roughness":
+                image = torch.clamp(roughness_map, 0.0, 1.0).repeat(3,1,1)
+                rendered_image = image.cpu().permute(1, 2, 0)
+                rendered_image = rendered_image * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            elif render_type == "metallic":
+                image = torch.clamp(metallic, 0.0, 1.0).repeat(3,1,1)
+                rendered_image = image.cpu().permute(1, 2, 0)
+                rendered_image = rendered_image * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            elif render_type == "visibility":
+                image = torch.clamp(visibility, 0.0, 1.0).repeat(3,1,1) * alpha_map
+                rendered_image = image.cpu().permute(1, 2, 0)
+                rendered_image = rendered_image * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            elif render_type == "diffuse color":
+                image = torch.clamp(diffuse_map, 0.0, 1.0)
+                rendered_image = image.cpu().permute(1, 2, 0)
+                rendered_image = rendered_image * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            elif render_type == "specular color":
+                image = torch.clamp(specular_color, 0.0, 1.0)
+                rendered_image = image.cpu().permute(1, 2, 0)
+                rendered_image = rendered_image * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            elif render_type == "direct light":
+                image = torch.clamp(direct_light, 0.0, 1.0) * alpha_map
+                rendered_image = image.cpu().permute(1, 2, 0)
+                rendered_image = rendered_image * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            elif render_type == "indirect light":
+                image = torch.clamp(indirect_light, 0.0, 1.0) * alpha_map
+                rendered_image = image.cpu().permute(1, 2, 0)
+                rendered_image = rendered_image * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            elif render_type == "envmap":
+                image = envmap1
+                rendered_image = image.cpu().permute(1, 2, 0)
+                rendered_image = rendered_image.clamp(0.0, 1.0) * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            elif render_type == "envmap2":
+                image = envmap2
+                rendered_image = image.cpu().permute(1, 2, 0)
+                rendered_image = rendered_image.clamp(0.0, 1.0) * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            elif render_type == "alpha map":
+                image = alpha_map.repeat(3,1,1)
+                rendered_image = image.cpu().permute(1, 2, 0)
+                rendered_image = rendered_image * 255
+                rendered_image = rendered_image.byte().numpy()
+                output = rendered_image
+            else:
+                print(f"Unsupported render type: {render_type}")
 
-
+            client.scene.set_background_image(
+                output,
+                format="jpeg"
+            )
 
 # ============================================================
 # Utils for training
@@ -496,34 +625,39 @@ if __name__ == "__main__":
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[])
     parser.add_argument("--start_checkpoint", type=str, default = None)
+    parser.add_argument("--gui", action="store_true")
     args = parser.parse_args(sys.argv[1:])
     args.save_iterations.append(args.iterations)
     args.test_iterations = args.test_iterations + [i for i in range(10000, args.iterations+1, 5000)]
     args.test_iterations.append(args.volume_render_until_iter)
 
-    
     if not args.model_path:
         # 获取当前时间并格式化为精确到分钟
         current_time = datetime.now().strftime('%m%d_%H%M')
         # 获取args.source_path的最后一个子目录名
-        last_subdir = os.path.basename(os.path.normpath(args.source_path))
+        norm_source_path = os.path.normpath(args.source_path)
+        scene_name = os.path.basename(norm_source_path)
+        dataset_name = norm_source_path.split(os.sep)[-2]
 
         
         # 生成带有时间戳和opt属性的简洁输出目录
-        args.model_path = os.path.join(
-            "./output/", f"{last_subdir}/",
-            f"{last_subdir}-{current_time}"
-        )
+        args.model_path = os.path.join("./logs/", dataset_name, scene_name, f"{scene_name}-{current_time}")
 
     print("Optimizing " + args.model_path)
 
-    # Initialize system state (RNG)
-    safe_state(args.quiet)
+    # # Initialize system state (RNG)
+    # safe_state(args.quiet)
+    
+    if args.gui:
+        server = network_gui.init()
+    else:
+        server = None
 
     # Start GUI server, configure and run training
-    # network_gui.init(args.ip, args.port)
     torch.autograd.set_detect_anomaly(args.detect_anomaly)
-    training(lp.extract(args), op.extract(args), pp.extract(args), args.test_iterations, args.save_iterations, args.checkpoint_iterations, args.start_checkpoint, args.model_path)
+    training(lp.extract(args), op.extract(args), pp.extract(args),
+             args.test_iterations, args.save_iterations, args.checkpoint_iterations, args.start_checkpoint, args.model_path,
+             server=server)
 
     # All done
     print("\nTraining complete.")

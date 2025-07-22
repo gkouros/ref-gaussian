@@ -1,98 +1,98 @@
-#
-# Copyright (C) 2023, Inria
-# GRAPHDECO research group, https://team.inria.fr/graphdeco
-# All rights reserved.
-#
-# This software is free for non-commercial, research and evaluation use 
-# under the terms of the LICENSE.md file.
-#
-# For inquiries contact  george.drettakis@inria.fr
-#
+import time
+import viser
+import viser.transforms as tf
+import numpy as np
 
-import torch
-import traceback
-import socket
-import json
-import struct
-from scene.cameras import MiniCam
+host = "0.0.0.0"
+port = 8080
 
-host = "127.0.0.1"
-port = 6009
+server = {
+    "server": None,
+    "render_type": None,
+    "client": None,
+}
 
-conn = None
-addr = None
+def init(initial_value='Rendered'):
+    """Start the ViserServer and return immediately.
+    All client setup happens in on_client_connect."""
+    global server
 
-listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Create and configure the server
+    server["server"] = viser.ViserServer(host=host, port=port)
+    server["server"].scene.world_axes.visible = True
+    server["server"].scene.set_up_direction(direction='+z')
+    
+    srv = server["server"]           # get the inner server once
 
-def init(wish_host, wish_port):
-    global host, port, listener
-    host = wish_host
-    port = wish_port
-    listener.bind((host, port))
-    listener.listen()
-    listener.settimeout(0)
+    @srv.on_client_connect
+    def _on_connect(client: viser.ClientHandle) -> None:
+        """Fires whenever a new client connects."""
+        server["client"] = client
 
-def send_json_data(conn, data):
-    # Serialize the list of strings to JSON
-    serialized_data = json.dumps(data)
-    # Convert the serialized data to bytes
-    bytes_data = serialized_data.encode('utf-8')
-    # Send the length of the serialized data first
-    conn.sendall(struct.pack('I', len(bytes_data)))
-    # Send the actual serialized data
-    conn.sendall(bytes_data)
+        # 1) Show the client ID
+        gui_info = client.gui.add_text("Client ID", initial_value=str(client.client_id))
+        gui_info.disabled = True
 
-def try_connect(render_items):
-    global conn, addr, listener
-    try:
-        conn, addr = listener.accept()
-        # print(f"\nConnected by {addr}")
-        conn.settimeout(None)
-        send_json_data(conn, render_items)
-    except Exception as inst:
-        pass
-        # raise inst
-            
-def read():
-    global conn
-    messageLength = conn.recv(4)
-    messageLength = int.from_bytes(messageLength, 'little')
-    message = conn.recv(messageLength)
-    return json.loads(message.decode("utf-8"))
+        # 2) Add the Render Type dropdown
+        server["render_type"] = client.gui.add_dropdown(
+            "Render Type",
+            options=[
+                "Rendered",
+                "albedo",
+                "roughness",
+                "metallic",
+                "visibility",
+                "diffuse color",
+                "specular color",
+                "direct light",
+                "indirect light",
+                "alpha map",
+                "render normal",
+                "surf normal",
+                "envmap",
+                "envmap2",
+            ],
+            initial_value=initial_value
+        )
 
-def send(message_bytes, verify, metrics):
-    global conn
-    if message_bytes != None:
-        conn.sendall(message_bytes)
-    conn.sendall(len(verify).to_bytes(4, 'little'))
-    conn.sendall(bytes(verify, 'ascii'))
-    send_json_data(conn, metrics)
+        # 3) Add and wire up the Reset Up button
+        gui_reset_up = client.gui.add_button(
+            "Reset up direction",
+            hint="Align the camera’s up to the current view-up.",
+        )
+        @gui_reset_up.on_click
+        def _reset_up(event: viser.GuiEvent) -> None:
+            cl = event.client
+            assert cl is not None
+            cl.camera.up_direction = tf.SO3(cl.camera.wxyz) @ np.array([0.0, -1.0, 0.0])
 
-def receive():
-    message = read()
-    width = message["resolution_x"]
-    height = message["resolution_y"]
+        # 4) Now that the client is ready, start your render or update loop
+        start_render_loop(client)
 
-    if width != 0 and height != 0:
-        try:
-            do_training = bool(message["train"])
-            fovy = message["fov_y"]
-            fovx = message["fov_x"]
-            znear = message["z_near"]
-            zfar = message["z_far"]
-            keep_alive = bool(message["keep_alive"])
-            scaling_modifier = message["scaling_modifier"]
-            world_view_transform = torch.reshape(torch.tensor(message["view_matrix"]), (4, 4)).cuda()
-            world_view_transform[:,1] = -world_view_transform[:,1]
-            world_view_transform[:,2] = -world_view_transform[:,2]
-            full_proj_transform = torch.reshape(torch.tensor(message["view_projection_matrix"]), (4, 4)).cuda()
-            full_proj_transform[:,1] = -full_proj_transform[:,1]
-            custom_cam = MiniCam(width, height, fovy, fovx, znear, zfar, world_view_transform, full_proj_transform)
-            render_mode = message["render_mode"]
-        except Exception as e:
-            print("")
-            traceback.print_exc()
-            # raise e
-        return custom_cam, do_training, keep_alive, scaling_modifier, render_mode
-    else:
-        return None, None, None, None, None
+    # If ViserServer needs an explicit “start” call, uncomment this:
+    # server["server"].start()
+
+    return server
+
+def start_render_loop(client: viser.ClientHandle):
+    """Example render loop: push frames whenever you like."""
+    import threading
+
+    def _loop():
+        while True:
+            # Read current GUI selection
+            render_mode = server["render_type"].value if server["render_type"] else "Rendered"
+
+            # TODO: render your scene based on render_mode
+            # e.g. client.scene.set_render_mode(render_mode)
+
+            time.sleep(1/30)  # 30 Hz update
+
+    thread = threading.Thread(target=_loop, daemon=True)
+    thread.start()
+
+def on_gui_change():
+    """Fallback accessor if you need the dropdown value elsewhere."""
+    if server["render_type"] is None:
+        return ""
+    return server["render_type"].value
