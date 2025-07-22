@@ -24,7 +24,15 @@ python train.py -s data/glossy_synthetic/bell_blender --eval  --white_background
 python train.py -s data/glossy_synthetic/tbell_blender --eval  --white_background  --lambda_normal_smooth 1.0
 python train.py -s data/glossy_synthetic/cat_blender --eval  --white_background 
 
-
 python train.py -s data/ref_real/gardenspheres --eval --iterations 20000 --indirect_from_iter 10000 --volume_render_until_iter 0 --initial 1 --init_until_iter 3000 --lambda_normal_smooth 0.45 -r 4 
 python train.py -s data/ref_real/toycar --eval --iterations 20000 --indirect_from_iter 10000 --volume_render_until_iter 0  --initial 1 --init_until_iter 3000  -r 4
 python train.py -s data/ref_real/sedan --eval --iterations 20000 --indirect_from_iter 10000 --volume_render_until_iter 0  --initial 1 --init_until_iter 3000  -r 8 
+
+python train.py -s data/nerf_synthetic/chair --eval --white_background
+python train.py -s data/nerf_synthetic/drums --eval --white_background
+python train.py -s data/nerf_synthetic/ficus --eval --white_background
+python train.py -s data/nerf_synthetic/hotdog --eval --white_background
+python train.py -s data/nerf_synthetic/lego --eval --white_background
+python train.py -s data/nerf_synthetic/materials --eval --white_background
+python train.py -s data/nerf_synthetic/mic --eval --white_background
+python train.py -s data/nerf_synthetic/ship --eval --white_background
