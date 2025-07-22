@@ -135,10 +135,15 @@ if __name__ == "__main__":
     parser.add_argument("--iteration", default=-1, type=int)
     parser.add_argument("--save_images", action="store_true")
     parser.add_argument("--quiet", action="store_true")
-    args = get_combined_args(parser)
-    print("Rendering " + args.model_path)
-
+    
     # Initialize system state (RNG)
-    safe_state(args.quiet)
-
-    render_sets(model.extract(args), args.iteration, pipeline.extract(args), args.save_images, op, True)
+    
+    temp_args = parser.parse_args()
+    models_path = temp_args.model_path
+    exps = os.listdir(models_path)
+    for exp in exps:
+        args = get_combined_args(parser, exp=exp)
+        args.model_path = os.path.join(models_path, exp)
+        safe_state(args.quiet)
+        print("Rendering " + args.model_path )
+        render_sets(model.extract(args), args.iteration, pipeline.extract(args), args.save_images, op, True)

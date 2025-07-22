@@ -9,34 +9,31 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib64/:$CONDA_PREFIX/bin/:$CONDA_PREFIX/li
 export LDFLAGS="-L$CONDA_PREFIX/lib/stubs -L$CONDA_PREFIX/lib64/stubs"
 
 # eval glossy synthetic data
-python eval.py --white_background --save_images --model_path data/glossy_synthetic/angel
-python eval.py --white_background --save_images --model_path data/glossy_synthetic/bell
-python eval.py --white_background --save_images --model_path data/glossy_synthetic/cat
-python eval.py --white_background --save_images --model_path data/glossy_synthetic/horse
-python eval.py --white_background --save_images --model_path data/glossy_synthetic/luyu
-python eval.py --white_background --save_images --model_path data/glossy_synthetic/potion
-python eval.py --white_background --save_images --model_path data/glossy_synthetic/tbell
-python eval.py --white_background --save_images --model_path data/glossy_synthetic/teapot
-
+python eval.py --white_background --save_images --model_path logs/glossy_synthetic/angel
+python eval.py --white_background --save_images --model_path logs/glossy_synthetic/bell
+python eval.py --white_background --save_images --model_path logs/glossy_synthetic/cat
+python eval.py --white_background --save_images --model_path logs/glossy_synthetic/horse
+python eval.py --white_background --save_images --model_path logs/glossy_synthetic/luyu
+python eval.py --white_background --save_images --model_path logs/glossy_synthetic/potion
+python eval.py --white_background --save_images --model_path logs/glossy_synthetic/tbell
+python eval.py --white_background --save_images --model_path logs/glossy_synthetic/teapotlogs
 # eval ref shiny data
-python eval.py --white_background --save_images --model_path data/ref_shiny/ball
-python eval.py --white_background --save_images --model_path data/ref_shiny/car
-python eval.py --white_background --save_images --model_path data/ref_shiny/coffee
-python eval.py --white_background --save_images --model_path data/ref_shiny/helmet
-python eval.py --white_background --save_images --model_path data/ref_shiny/teapot
-python eval.py --white_background --save_images --model_path data/ref_shiny/toaster
-
+python eval.py --white_background --save_images --model_path logs/ref_shiny/ball
+python eval.py --white_background --save_images --model_path logs/ref_shiny/car
+python eval.py --white_background --save_images --model_path logs/ref_shiny/coffee
+python eval.py --white_background --save_images --model_path logs/ref_shiny/helmet
+python eval.py --white_background --save_images --model_path logs/ref_shiny/teapot
+python eval.py --white_background --save_images --model_path logs/ref_shiny/toasterlogs
 # eval ref real data
-python eval.py --white_background --save_images --model_path data/ref_real/gardenspheres
-python eval.py --white_background --save_images --model_path data/ref_real/sedan
-python eval.py --white_background --save_images --model_path data/ref_real/toycar
-
+python eval.py --white_background --save_images --model_path logs/ref_real/gardenspheres
+python eval.py --white_background --save_images --model_path logs/ref_real/sedan
+python eval.py --white_background --save_images --model_path logs/ref_real/toycarlogs
 # eval nerf synthetic data
-python eval.py --white_background --save_images --model_path data/nerf_synthetic/chair
-python eval.py --white_background --save_images --model_path data/nerf_synthetic/drums
-python eval.py --white_background --save_images --model_path data/nerf_synthetic/ficus
-python eval.py --white_background --save_images --model_path data/nerf_synthetic/hotdog
-python eval.py --white_background --save_images --model_path data/nerf_synthetic/lego
-python eval.py --white_background --save_images --model_path data/nerf_synthetic/materials
-python eval.py --white_background --save_images --model_path data/nerf_synthetic/mic
-python eval.py --white_background --save_images --model_path data/nerf_synthetic/ship
+python eval.py --white_background --save_images --model_path logs/nerf_synthetic/chair
+python eval.py --white_background --save_images --model_path logs/nerf_synthetic/drums
+python eval.py --white_background --save_images --model_path logs/nerf_synthetic/ficus
+python eval.py --white_background --save_images --model_path logs/nerf_synthetic/hotdog
+python eval.py --white_background --save_images --model_path logs/nerf_synthetic/lego
+python eval.py --white_background --save_images --model_path logs/nerf_synthetic/materials
+python eval.py --white_background --save_images --model_path logs/nerf_synthetic/mic
+python eval.py --white_background --save_images --model_path logs/nerf_synthetic/ship
