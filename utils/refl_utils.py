@@ -114,32 +114,29 @@ def get_specular_color_surfel(envmap: torch.Tensor, albedo, HWK, R, T, normal_ma
     fg = dr.texture(FG_LUT, fg_uv.reshape(1, -1, 1, 2).contiguous(), filter_mode="linear", boundary_mode="clamp").reshape(1, H, W, 2) 
     # Compute direct light
     direct_light = envmap(rays_refl, roughness=roughness)
-    specular_weight = ((0.04 * (1 - refl_strength) + albedo * refl_strength) * fg[0][..., 0:1] + fg[0][..., 1:2]) 
-    
+    F0 = (0.04 * (1 - refl_strength) + albedo * refl_strength)
+    specular_weight = F0 * fg[0][..., 0:1] + fg[0][..., 1:2]
+
     # visibility
-    visibility = torch.ones_like(render_alpha)
+    visibility = torch.ones_like(render_alpha)  # (H,W,1)
     if pc.ray_tracer is not None and indirect_light is not None:
-        mask = (render_alpha>0)[..., 0]
-        rays_cam, rays_o = sample_camera_rays_unnormalize(HWK, R, T)
-        w_o = safe_normalize(-rays_cam)
-        # import pdb;pdb.set_trace() 
-        rays_refl, _ = reflection(w_o, normal_map)
-        rays_refl = safe_normalize(rays_refl)
-        intersections = rays_o + surf_depth.permute(1, 2, 0) * rays_cam
-        # import pdb;pdb.set_trace()
-        _, _, depth = pc.ray_tracer.trace(intersections[mask], rays_refl[mask])
-        visibility[mask] = (depth >= 10).float().unsqueeze(-1)
+        mask = (render_alpha>0)[..., 0] # (H,W)
+        rays_cam, rays_o = sample_camera_rays_unnormalize(HWK, R, T)  #  (H,W,3), (3,)
+        w_o = safe_normalize(-rays_cam)  # (H,W,3)
+        rays_refl, _ = reflection(w_o, normal_map)  # (H,W,3)
+        rays_refl = safe_normalize(rays_refl)  # (H,W,3)
+        intersections = rays_o + surf_depth.permute(1, 2, 0) * rays_cam  # (H,W,3)
+        _, _, depth = pc.ray_tracer.trace(intersections[mask], rays_refl[mask])  # (N,)
+        visibility[mask] = (depth >= 10).float().unsqueeze(-1)  # (N, 1)
     
         # indirect light
-        specular_light = direct_light * visibility + (1 - visibility) * indirect_light
-        indirect_color = (1 - visibility) * indirect_light * render_alpha * specular_weight
+        specular_light = direct_light #* visibility + (1 - visibility) * indirect_light
+        indirect_color = (1 - visibility) * indirect_light * render_alpha * specular_weight        
     else:
         specular_light = direct_light
-    
+
     # Compute specular color
-    specular_raw = specular_light * render_alpha
-    specular = specular_raw * specular_weight
-    
+    specular = specular_light * render_alpha * specular_weight
 
     if indirect_light is not None:
         extra_dict = {
@@ -208,7 +205,7 @@ def get_full_color_volume_indirect(envmap: torch.Tensor, xyz, albedo, HWK, R, T,
     # Compute specular
     direct_light = envmap(rays_refl, roughness=roughness) 
     specular_weight = ((0.04 * (1 - refl_strength) + albedo * refl_strength) * fg[0][..., 0:1] + fg[0][..., 1:2]) 
-    specular_light = direct_light * visibility + (1 - visibility) * indirect_light
+    specular_light = direct_light #* visibility + (1 - visibility) * indirect_light
     specular = specular_light * specular_weight
 
     extra_dict = {
