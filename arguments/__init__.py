@@ -192,13 +192,13 @@ class OptimizationParams(ParamGroup):
 
         super().__init__(parser, "Optimization Parameters")
 
-def get_combined_args(parser : ArgumentParser):
+def get_combined_args(parser : ArgumentParser, exp : str = ""):
     cmdlne_string = sys.argv[1:]
     cfgfile_string = "Namespace()"
     args_cmdline = parser.parse_args(cmdlne_string)
 
     try:
-        cfgfilepath = os.path.join(args_cmdline.model_path, "cfg_args")
+        cfgfilepath = os.path.join(args_cmdline.model_path, exp, "cfg_args")
         print("Looking for config file in", cfgfilepath)
         with open(cfgfilepath) as cfg_file:
             print("Config file found: {}".format(cfgfilepath))
