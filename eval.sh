@@ -16,18 +16,18 @@ python eval.py --white_background --save_images --model_path logs/glossy_synthet
 python eval.py --white_background --save_images --model_path logs/glossy_synthetic/luyu
 python eval.py --white_background --save_images --model_path logs/glossy_synthetic/potion
 python eval.py --white_background --save_images --model_path logs/glossy_synthetic/tbell
-python eval.py --white_background --save_images --model_path logs/glossy_synthetic/teapotlogs
+python eval.py --white_background --save_images --model_path logs/glossy_synthetic/teapot
 # eval ref shiny data
 python eval.py --white_background --save_images --model_path logs/ref_shiny/ball
 python eval.py --white_background --save_images --model_path logs/ref_shiny/car
 python eval.py --white_background --save_images --model_path logs/ref_shiny/coffee
 python eval.py --white_background --save_images --model_path logs/ref_shiny/helmet
 python eval.py --white_background --save_images --model_path logs/ref_shiny/teapot
-python eval.py --white_background --save_images --model_path logs/ref_shiny/toasterlogs
+python eval.py --white_background --save_images --model_path logs/ref_shiny/toaster
 # eval ref real data
 python eval.py --white_background --save_images --model_path logs/ref_real/gardenspheres
 python eval.py --white_background --save_images --model_path logs/ref_real/sedan
-python eval.py --white_background --save_images --model_path logs/ref_real/toycarlogs
+python eval.py --white_background --save_images --model_path logs/ref_real/toycar
 # eval nerf synthetic data
 python eval.py --white_background --save_images --model_path logs/nerf_synthetic/chair
 python eval.py --white_background --save_images --model_path logs/nerf_synthetic/drums

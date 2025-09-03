@@ -104,6 +104,12 @@ class CubemapEncoder(nn.Module):
         outputs = torch.sigmoid(outputs).reshape(*pre_shape,3)
         return outputs
 
+    def set_faces(self, faces, fail_value):
+        with torch.no_grad():
+            self.params = nn.ParameterDict({
+                'Cubemap_texture': nn.Parameter(faces),
+                'Cubemap_failv': nn.Parameter(fail_value),
+            })
 
 class MipCubemapEncoder(nn.Module):
     def __init__(self, num_levels=4, level_dim=6, per_level_scale=4, base_resolution=4,interpolation='linear',concat=True):
@@ -159,7 +165,52 @@ class MipCubemapEncoder(nn.Module):
             outputs = sum(outputs)
         return outputs.permute(1,0) # CxN -> NxC
 
+    def set_faces(self, faces, fail_value=None, strict=True):
+        """
+        Set cubemap faces for all mip levels.
 
+        Args:
+            faces:
+                - list/tuple of length num_levels with tensors shaped (6, C, H, W), or
+                - 5D tensor shaped (L, 6, C, H, W) where L == num_levels.
+              C must equal self.level_dim. H and W can differ per level.
+            fail_value (optional): tensor shaped (C,) for the per-level encoder.
+            strict (bool): if True, validates shapes and counts; raises on mismatch.
+        """
+        device = self.params_list[0].device
+        dtype  = self.params_list[0].dtype
 
+        # Normalize input to a list of level tensors
+        if isinstance(faces, torch.Tensor) and faces.dim() == 5:
+            if strict and faces.shape[0] != self.num_levels:
+                raise ValueError(f"faces has {faces.shape[0]} levels, expected {self.num_levels}")
+            faces_list = [faces[i] for i in range(faces.shape[0])]
+        elif isinstance(faces, (list, tuple)):
+            if strict and len(faces) != self.num_levels:
+                raise ValueError(f"faces length {len(faces)} != num_levels {self.num_levels}")
+            faces_list = list(faces)
+        else:
+            raise TypeError("faces must be a list/tuple of tensors or a 5D tensor (L,6,C,H,W)")
 
+        with torch.no_grad():
+            for i, f in enumerate(faces_list):
+                if not isinstance(f, torch.Tensor):
+                    f = torch.as_tensor(f)
+                if strict:
+                    if f.dim() != 4 or f.shape[0] != 6:
+                        raise ValueError(f"Level {i}: expected shape (6,C,H,W), got {tuple(f.shape)}")
+                    if f.shape[1] != self.level_dim:
+                        raise ValueError(f"Level {i}: C={f.shape[1]} != level_dim={self.level_dim}")
+                    if f.shape[2] != f.shape[3]:
+                        raise ValueError(f"Level {i}: H and W must be equal, got {f.shape[2]}x{f.shape[3]}")
 
+                # Replace the Parameter at this level
+                f = f.to(device=device, dtype=dtype).contiguous()
+                self.params_list[i] = nn.Parameter(f)
+
+            if fail_value is not None:
+                if not isinstance(fail_value, torch.Tensor):
+                    fail_value = torch.as_tensor(fail_value)
+                if strict and fail_value.numel() != self.level_dim:
+                    raise ValueError(f"fail_value has {fail_value.numel()} elems, expected {self.level_dim}")
+                self.fail_value = nn.Parameter(fail_value.to(device=device, dtype=dtype))
