@@ -169,4 +169,4 @@ if __name__ == "__main__":
         args.model_path = os.path.join(models_path, exp)
         safe_state(args.quiet)
         print("Rendering " + args.model_path )
-        render_sets(model.extract(args), args.iteration, pipeline.extract(args), args.save_images, op, indirect=True, args)
+        render_sets(model.extract(args), args.iteration, pipeline.extract(args), args.save_images, op, True, args)

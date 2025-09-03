@@ -19,3 +19,6 @@ def lpips(x: torch.Tensor,
     device = x.device
     criterion = LPIPS(net_type, version).to(device)
     return criterion(x, y)
+
+def get_lpips_model(net_type: str = 'alex', version: str = '0.1'):
+    return LPIPS(net_type, version)
