@@ -605,6 +605,8 @@ class GaussianModel:
         if "roughness" in optimizable_tensors:
             self._roughness = optimizable_tensors["roughness"]
 
+    def replace_envmap(self, map_path, preprocess_fun=None):
+        self.env_map = EnvLight(path=map_path, device='cuda', trainable=True, preprocess_fun=preprocess_fun).cuda()
 
     def load_ply(self, path, relight=False, args=None):
         plydata = PlyData.read(path)
@@ -697,7 +699,6 @@ class GaussianModel:
         else:
             map_path = path.replace('.ply', '.hdr')
             self.env_map = EnvLight(path=map_path, device='cuda', trainable=True).cuda()
-
 
         self._xyz = nn.Parameter(torch.tensor(xyz, dtype=torch.float, device="cuda").requires_grad_(True))
 

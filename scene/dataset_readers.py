@@ -221,7 +221,7 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
 
         frames = contents["frames"]
         for idx, frame in enumerate(frames):
-            cam_name = os.path.join(path, frame["file_path"] + extension)
+            image_path = os.path.join(path, frame["file_path"] + extension)
 
             # NeRF 'transform_matrix' is a camera-to-world transform
             c2w = np.array(frame["transform_matrix"])
@@ -235,19 +235,24 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
             R = np.transpose(w2c[:3,:3])  # R is stored transposed due to 'glm' in CUDA code
             T = w2c[:3, 3]
 
-            image_path = os.path.join(path, cam_name)
-            image_name = Path(cam_name).stem
+            image_name = Path(image_path).stem
             image = Image.open(image_path)
-
             im_data = np.array(image.convert("RGBA"))
 
             bg = np.array([1,1,1]) if white_background else np.array([0, 0, 0])
-
             norm_data = im_data / 255.0
             arr = norm_data[:,:,:3] * norm_data[:, :, 3:4] + bg * (1 - norm_data[:, :, 3:4])
-            image = Image.fromarray(np.array(arr*255.0, dtype=np.byte), "RGB")
-            fo = fov2focal(fovx, image.size[0])
+            arr = np.concatenate([arr, norm_data[:, :, 3:4]], axis=-1)
+            image = Image.fromarray(np.array(arr*255.0, dtype=np.byte), "RGBA")
+            
+            if image.mode != "RGBA":
+                try:
+                    alpha = Image.open(image_path.replace(".png", "_alpha.png")).convert("L")
+                    image.putalpha(alpha)
+                except:
+                    pass
 
+            fo = fov2focal(fovx, image.size[0])
             W,H = image.size[0], image.size[1]
             K = np.array([
                 [fo, 0, W/2],
@@ -265,9 +270,10 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
             
     return cam_infos
 
-def readNerfSyntheticInfo(path, white_background, eval, extension=".png"):
+def readNerfSyntheticInfo(path, white_background, eval, extension=".png", relight=False):
     print("Reading Training Transforms")
-    train_cam_infos = readCamerasFromTransforms(path, "transforms_train.json", white_background, extension)
+    train_cam_infos = readCamerasFromTransforms(path, "transforms_train.json", white_background, extension) if not relight else []
+
     print("Reading Test Transforms")
     test_cam_infos = readCamerasFromTransforms(path, "transforms_test.json", white_background, extension)
     
@@ -275,7 +281,7 @@ def readNerfSyntheticInfo(path, white_background, eval, extension=".png"):
         train_cam_infos.extend(test_cam_infos)
         test_cam_infos = []
 
-    nerf_normalization = getNerfppNorm(train_cam_infos)
+    nerf_normalization = getNerfppNorm(train_cam_infos) if not relight else None
 
     ply_path = os.path.join(path, "points3d.ply")
     if not os.path.exists(ply_path):

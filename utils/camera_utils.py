@@ -46,7 +46,6 @@ def loadCam(args, id, cam_info, resolution_scale):
         HWK = (resolution[1], resolution[0], K)
 
     if len(cam_info.image.split()) > 3:
-        import torch
         resized_image_rgb = torch.cat([PILtoTorch(im, resolution) for im in cam_info.image.split()[:3]], dim=0)
         loaded_mask = PILtoTorch(cam_info.image.split()[3], resolution)
         gt_image = resized_image_rgb
@@ -54,6 +53,7 @@ def loadCam(args, id, cam_info, resolution_scale):
         resized_image_rgb = PILtoTorch(cam_info.image, resolution)
         loaded_mask = None
         gt_image = resized_image_rgb
+
     # #
     refl_path = os.path.join(
         os.path.dirname(os.path.dirname(cam_info.image_path)), 'image_msk')

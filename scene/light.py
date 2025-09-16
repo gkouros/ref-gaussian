@@ -20,7 +20,7 @@ def inverse_sigmoid(x):
 
 class EnvLight(torch.nn.Module):
 
-    def __init__(self, path=None, device=None, scale=1.0, min_res=16, max_res=128, min_roughness=0.08, max_roughness=0.5, trainable=False):
+    def __init__(self, path=None, device=None, scale=1.0, min_res=16, max_res=128, min_roughness=0.08, max_roughness=0.5, trainable=False, preprocess_fun=None):
         super().__init__()
         self.device = device if device is not None else 'cuda' # only supports cuda
         self.scale = scale # scale of the hdr values
@@ -38,12 +38,12 @@ class EnvLight(torch.nn.Module):
         
         # try to load from file (.hdr or .exr)
         if path is not None:
-            self.load(path)
+            self.load(path, preprocess_fun)
         
         self.build_mips()
 
 
-    def load(self, path):
+    def load(self, path, preprocess_fun=None):
         """
         Load an .hdr or .exr environment light map file and convert it to cubemap.
         """
@@ -52,11 +52,12 @@ class EnvLight(torch.nn.Module):
         # if image.dtype != np.float32:
         #     image = image.astype(np.float32) / 255.0  # Scale to [0,1] if not already in float
         # 从文件中加载图像
-        hdr_image = imageio.imread(path)
+        hdr_image = imageio.imread(path)[..., :3]
         
         if hdr_image.dtype != np.float32:
             raise ValueError("HDR image should be in float32 format.")
 
+        hdr_image = preprocess_fun(hdr_image) if preprocess_fun is not None else hdr_image
         ldr_image = linear_to_srgb(hdr_image)
         # 确保图像为浮点类型
         image = torch.from_numpy(ldr_image).to(self.device) *  self.scale

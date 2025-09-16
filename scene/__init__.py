@@ -43,9 +43,10 @@ class Scene:
 
         if os.path.exists(os.path.join(args.source_path, "sparse")):
             scene_info = sceneLoadTypeCallbacks["Colmap"](args.source_path, args.images, args.eval)
-        elif os.path.exists(os.path.join(args.source_path, "transforms_train.json")):
+        elif os.path.exists(os.path.join(args.source_path, "transforms_train.json")) or \
+                (args.relight and os.path.exists(os.path.join(args.source_path, "transforms_test.json"))):
             print("Found transforms_train.json file, assuming Blender data set!")
-            scene_info = sceneLoadTypeCallbacks["Blender"](args.source_path, args.white_background, args.eval)
+            scene_info = sceneLoadTypeCallbacks["Blender"](args.source_path, args.white_background, args.eval, relight=args.relight)
         else:
             assert False, "Could not recognize scene type!"
 
@@ -65,9 +66,9 @@ class Scene:
 
         if shuffle:
             random.shuffle(scene_info.train_cameras)  # Multi-res consistent random shuffling
-            random.shuffle(scene_info.test_cameras)  # Multi-res consistent random shuffling
+            # random.shuffle(scene_info.test_cameras)  # Multi-res consistent random shuffling
 
-        self.cameras_extent = scene_info.nerf_normalization["radius"]
+        self.cameras_extent = scene_info.nerf_normalization["radius"] if not args.relight else None
 
         for resolution_scale in resolution_scales:
             print("Loading Training Cameras")
@@ -76,7 +77,7 @@ class Scene:
             self.test_cameras[resolution_scale] = cameraList_from_camInfos(scene_info.test_cameras, resolution_scale, args)
 
         if self.loaded_iter:
-            if args.relight:
+            if False: #args.relight:
                 self.gaussians.load_ply(os.path.join(self.model_path,
                                                             "point_cloud",
                                                             "iteration_" + str(self.loaded_iter),

@@ -48,15 +48,15 @@ def render_set(model_path, name, views, gaussians, pipeline, background, save_im
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
         view.refl_mask = None  # When evaluating, reflection mask is disabled
         t1 = time.time()
-        
+
         rendering = render_surfel(view, gaussians, pipeline, background, srgb=opt.srgb, opt=opt)
         render_time = time.time() - t1
-        
+
         render_color = torch.clamp(rendering["render"], 0.0, 1.0)
         render_color = render_color[None]
         gt = torch.clamp(view.original_image, 0.0, 1.0)
         gt = gt[None, 0:3, :, :]
-        mask = view.gt_alpha_mask.bool()
+        mask = view.gt_alpha_mask.bool() if view.gt_alpha_mask is not None else torch.ones_like(gt[:, :1, :, :]).bool()
 
         # rescale colors to match with GT
         if args.relight_gt_path and args.relight_envmap_path and args.rescale_relighted:
@@ -89,24 +89,24 @@ def render_set(model_path, name, views, gaussians, pipeline, background, save_im
             torchvision.utils.save_image(rendering["visibility"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'visibility_{0:05d}.png'.format(idx)))
             torchvision.utils.save_image(rendering["refl_strength_map"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'metallic_{0:05d}.png'.format(idx)))
             torchvision.utils.save_image(rendering["rend_alpha"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'alpha_{0:05d}.png'.format(idx)))
-            
+
     ssim_v = np.array(ssims).mean()
     psnr_v = np.array(psnrs).mean()
     lpip_v = np.array(lpipss).mean()
     fps = 1.0 / np.array(render_times).mean()
     print('psnr:{}, ssim:{}, lpips:{}, fps:{}'.format(psnr_v, ssim_v, lpip_v, fps))
-    dump_path = os.path.join(model_path, 'metric.txt')
+    dump_path = os.path.join(model_path, name, 'metric.txt')
     with open(dump_path, 'w') as f:
         f.write('psnr:{}, ssim:{}, lpips:{}, fps:{}'.format(psnr_v, ssim_v, lpip_v, fps))
 
 def render_sets(dataset: ModelParams, iteration: int, pipeline: PipelineParams, save_ims: bool, op, indirect, args):
     with torch.no_grad():
         gaussians = GaussianModel(dataset.sh_degree)
-        relight = args.relight_gt_path and args.relight_envmap_path
-        if relight:
+        dataset.relight = args.relight_gt_path and args.relight_envmap_path
+        if dataset.relight:
             dataset.source_path = args.relight_gt_path
 
-        scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False, relight=relight)
+        scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False)
 
         bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
         background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
@@ -116,23 +116,25 @@ def render_sets(dataset: ModelParams, iteration: int, pipeline: PipelineParams, 
             gaussians.load_mesh_from_ply(dataset.model_path, iteration)
 
         # load relighted envmap
-        if relight:
-            envmap = cv2.cvtColor(cv2.imread(args.relight_envmap_path, cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB)
-            envmap = cv2.resize(envmap, (1024, 512), interpolation=cv2.INTER_LINEAR)
-            envmap = gamma_tonemap(envmap)  # apply tonemap to envmap
-            orig_envmap = envmap.copy()
-            orig_envmap = np.roll(orig_envmap, shift=envmap.shape[1] // 4, axis=1)
-            envmap = envmap * 10 - 5  # expected range of envmap is [-5, 5]
-            envmap = np.roll(envmap, shift=envmap.shape[1] // 4, axis=1)
-            faces = make_cubemap_faces(envmap, face_size=gaussians.env_map.resolution)
-            faces = torch.from_numpy(faces).permute(0,3,1,2).float().cuda()
-            fail_value = torch.zeros(gaussians.env_map.output_dim).float().cuda()
-            gaussians.env_map.set_faces(faces, fail_value)
+        if dataset.relight:
+            if False:
+                envmap = cv2.cvtColor(cv2.imread(args.relight_envmap_path, cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB)
+                envmap = cv2.resize(envmap, (1024, 512), interpolation=cv2.INTER_LINEAR)
+                envmap = gamma_tonemap(envmap)  # apply tonemap to envmap
+                envmap = envmap * 10 - 5  # expected range of envmap is [-5, 5]
+                envmap = np.roll(envmap, shift=envmap.shape[1] // 4, axis=1)
+                faces = make_cubemap_faces(envmap, face_size=gaussians.env_map.resolution)
+                faces = torch.from_numpy(faces).permute(0,3,1,2).float().cuda()
+                fail_value = torch.zeros(gaussians.env_map.output_dim).float().cuda()
+                gaussians.env_map.set_faces(faces, fail_value)
+            else:
+                preprocess_fun = lambda x: np.roll(x, shift=x.shape[1] // 4, axis=1)
+                gaussians.replace_envmap(args.relight_envmap_path, preprocess_fun)
 
         # render_set(dataset.model_path, "train", scene.getTrainCameras(), gaussians, pipeline, background, save_ims, op, args)
-        test_dir = "test" if not relight else os.path.join("relight", args.relight_envmap_path.split('/')[-1])
+        test_dir = "test" if not dataset.relight else os.path.join("relight", args.relight_envmap_path.split('/')[-1])
         render_set(dataset.model_path, test_dir, scene.getTestCameras(), gaussians, pipeline, background, save_ims, op, args)
-        
+
         env_dict = gaussians.render_env_map()
         grid = [
             env_dict["env1"].permute(2, 0, 1),
@@ -160,7 +162,7 @@ if __name__ == "__main__":
     parser.add_argument("--rescale_relighted", action="store_true")
 
     # Initialize system state (RNG)
-    
+
     temp_args = parser.parse_args()
     models_path = temp_args.model_path
     exps = os.listdir(models_path)
