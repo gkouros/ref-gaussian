@@ -182,13 +182,16 @@ def generate_path(viewpoint_cameras, n_frames=480):
 
   traj = []
   for c2w in new_poses:
-      c2w = c2w @ np.diag([1, -1, -1, 1])
+      c2w = c2w @ np.diag([1, -1, -1, 1]).astype(np.float32)
       cam = copy.deepcopy(viewpoint_cameras[0])
-      cam.image_height = int(cam.image_height / 2) * 2
-      cam.image_width = int(cam.image_width / 2) * 2
-      cam.world_view_transform = torch.from_numpy(np.linalg.inv(c2w).T).float().cuda()
+      w2c = np.linalg.inv(c2w).astype(np.float32)
+      if hasattr(cam, "R"):
+          cam.R = torch.from_numpy(c2w[:3, :3].astype(np.float32)).cuda()
+      if hasattr(cam, "T"):
+          cam.T = torch.from_numpy(w2c[:3, 3].astype(np.float32)).cuda()
+      cam.world_view_transform = torch.from_numpy(w2c).float().cuda().T
       cam.full_proj_transform = (cam.world_view_transform.unsqueeze(0).bmm(cam.projection_matrix.unsqueeze(0))).squeeze(0)
-      cam.camera_center = cam.world_view_transform.inverse()[3, :3]
+      cam.camera_center = torch.from_numpy(c2w[:3, 3]).float().cuda()
       traj.append(cam)
 
   return traj
@@ -210,7 +213,7 @@ def create_videos(base_dir, input_dir, out_name, num_frames=480):
 
   os.makedirs(base_dir, exist_ok=True)
   render_dist_curve_fn = np.log
-  
+
   # Load one example frame to get image shape and depth range.
   depth_file = os.path.join(input_dir, 'vis', f'depth_{idx_to_str(0)}.tiff')
   depth_frame = load_img(depth_file)
@@ -226,11 +229,11 @@ def create_videos(base_dir, input_dir, out_name, num_frames=480):
       'fps': 60,
       'crf': 18,
   }
-  
+
   for k in ['depth', 'normal', 'color']:
     video_file = os.path.join(base_dir, f'{video_prefix}_{k}.mp4')
     input_format = 'gray' if k == 'alpha' else 'rgb'
-    
+
 
     file_ext = 'png' if k in ['color', 'normal'] else 'tiff'
     idx = 0
