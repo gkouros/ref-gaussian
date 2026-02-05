@@ -16,6 +16,7 @@ from utils.image_utils import psnr
 from utils.loss_utils import ssim
 from lpipsPyTorch import get_lpips_model
 from torchvision.utils import save_image, make_grid
+from copy import deepcopy
 
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 import cv2
@@ -78,19 +79,20 @@ def render_set(model_path, name, views, gaussians, pipeline, background, save_im
             render_times.append(render_time)
 
         if save_ims:
-            torchvision.utils.save_image(gt, os.path.join(gt_path, '{0:05d}.png'.format(idx)))
             torchvision.utils.save_image(render_color, os.path.join(color_path, '{0:05d}.png'.format(idx)))
             torchvision.utils.save_image(rendering['rend_normal'] * 0.5 + 0.5, os.path.join(vis_path, 'normal_{0:05d}.png'.format(idx)))
-            torchvision.utils.save_image(rendering["base_color_map"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'base_color_{0:05d}.png'.format(idx)))
-            torchvision.utils.save_image(rendering["roughness_map"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'roughness_{0:05d}.png'.format(idx)))
-            torchvision.utils.save_image(rendering["specular_map"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'specular_color_{0:05d}.png'.format(idx)))
-            torchvision.utils.save_image(rendering["diffuse_map"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'diffuse_color_{0:05d}.png'.format(idx)))
-            torchvision.utils.save_image(rendering["direct_light"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'direct_light_{0:05d}.png'.format(idx)))
-            torchvision.utils.save_image(rendering["indirect_color"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'indirect_color_{0:05d}.png'.format(idx)))
-            torchvision.utils.save_image(rendering["indirect_light"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'indirect_light_{0:05d}.png'.format(idx)))
-            torchvision.utils.save_image(rendering["visibility"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'visibility_{0:05d}.png'.format(idx)))
-            torchvision.utils.save_image(rendering["refl_strength_map"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'metallic_{0:05d}.png'.format(idx)))
-            torchvision.utils.save_image(rendering["rend_alpha"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'alpha_{0:05d}.png'.format(idx)))
+            if not "traj" in name:
+                torchvision.utils.save_image(gt, os.path.join(gt_path, '{0:05d}.png'.format(idx)))
+                torchvision.utils.save_image(rendering["base_color_map"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'base_color_{0:05d}.png'.format(idx)))
+                torchvision.utils.save_image(rendering["roughness_map"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'roughness_{0:05d}.png'.format(idx)))
+                torchvision.utils.save_image(rendering["specular_map"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'specular_color_{0:05d}.png'.format(idx)))
+                torchvision.utils.save_image(rendering["diffuse_map"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'diffuse_color_{0:05d}.png'.format(idx)))
+                torchvision.utils.save_image(rendering["direct_light"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'direct_light_{0:05d}.png'.format(idx)))
+                torchvision.utils.save_image(rendering["indirect_color"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'indirect_color_{0:05d}.png'.format(idx)))
+                torchvision.utils.save_image(rendering["indirect_light"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'indirect_light_{0:05d}.png'.format(idx)))
+                torchvision.utils.save_image(rendering["visibility"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'visibility_{0:05d}.png'.format(idx)))
+                torchvision.utils.save_image(rendering["refl_strength_map"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'metallic_{0:05d}.png'.format(idx)))
+                torchvision.utils.save_image(rendering["rend_alpha"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'alpha_{0:05d}.png'.format(idx)))
 
     if not "traj" in name:
         ssim_v = np.array(ssims).mean()
@@ -105,11 +107,11 @@ def render_set(model_path, name, views, gaussians, pipeline, background, save_im
 def render_sets(dataset: ModelParams, iteration: int, pipeline: PipelineParams, save_ims: bool, op, indirect, args):
     with torch.no_grad():
         gaussians = GaussianModel(dataset.sh_degree)
+        orig_dataset = deepcopy(dataset)
         dataset.relight = args.relight_gt_path and args.relight_envmap_path
-        if dataset.relight:
+        if dataset.relight and not args.render_path:
             dataset.source_path = args.relight_gt_path
-
-        scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False)
+        scene = Scene(orig_dataset if args.render_path else dataset, gaussians, load_iteration=iteration, shuffle=False)
 
         bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
         background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
@@ -177,6 +179,6 @@ if __name__ == "__main__":
     for exp in exps:
         args = get_combined_args(parser, exp=exp)
         args.model_path = os.path.join(models_path, exp)
-        safe_state(args.quiet)
+        # safe_state(args.quiet)
         print("Rendering " + args.model_path )
         render_sets(model.extract(args), args.iteration, pipeline.extract(args), args.save_images, op, True, args)
