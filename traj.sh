@@ -8,7 +8,7 @@ export CPATH=$CONDA_PREFIX/targets/x86_64-linux/include:$CPATH
 export LD_LIBRARY_PATH="$CONDA_PREFIX/lib64/:$CONDA_PREFIX/bin/:$CONDA_PREFIX/lib/:$CONDA_PREFIX/lib/stub:$LD_LIBRARY_PATH"
 export LDFLAGS="-L$CONDA_PREFIX/lib/stubs -L$CONDA_PREFIX/lib64/stubs"
 
-# eval glossy synthetic data
+# # eval glossy synthetic data
 python eval.py --white_background --save_images --render_path --model_path logs/glossy_synthetic/angel
 python eval.py --white_background --save_images --render_path --model_path logs/glossy_synthetic/bell
 python eval.py --white_background --save_images --render_path --model_path logs/glossy_synthetic/cat
@@ -28,3 +28,12 @@ python eval.py --white_background --save_images --render_path --model_path logs/
 python eval.py --white_background --save_images --render_path --model_path logs/ref_real/gardenspheres
 python eval.py --white_background --save_images --render_path --model_path logs/ref_real/sedan
 python eval.py --white_background --save_images --render_path --model_path logs/ref_real/toycar
+
+
+# relighting
+for scene in "angel" "bell" "cat" "horse" "luyu" "potion" "tbell" "teapot" ; do
+    for envmap in "corridor" "golf" "neon" ; do
+        echo "Relighting $scene with $envmap.exr"
+        python -u eval.py -m logs/glossy_synthetic/${scene} --render_path  --save_images $RESCALE_FLAG --relight_gt_path="data/glossy_synthetic/relight_gt/${scene}_${envmap}" --relight_envmap_path="data/glossy_synthetic/relight_gt/${envmap}.exr"
+    done
+done
