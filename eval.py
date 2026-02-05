@@ -8,6 +8,7 @@ from gaussian_renderer import render_surfel
 import torchvision
 from utils.general_utils import safe_state, make_cubemap_faces
 from utils.system_utils import searchForMaxIteration
+from utils.render_utils import generate_path
 from argparse import ArgumentParser
 from arguments import ModelParams, PipelineParams, OptimizationParams, get_combined_args
 from gaussian_renderer import GaussianModel
@@ -70,10 +71,11 @@ def render_set(model_path, name, views, gaussians, pipeline, background, save_im
             factor = gt_mean / render_mean
             render_color = factor[:, :, None, None] * render_color * mask + (1 - mask.byte())
 
-        ssims.append(ssim(render_color, gt).item())
-        psnrs.append(psnr(render_color, gt).item())
-        lpipss.append(LPIPS(render_color, gt).item())
-        render_times.append(render_time)
+        if not "traj" in name:
+            ssims.append(ssim(render_color, gt).item())
+            psnrs.append(psnr(render_color, gt).item())
+            lpipss.append(LPIPS(render_color, gt).item())
+            render_times.append(render_time)
 
         if save_ims:
             torchvision.utils.save_image(gt, os.path.join(gt_path, '{0:05d}.png'.format(idx)))
@@ -90,14 +92,15 @@ def render_set(model_path, name, views, gaussians, pipeline, background, save_im
             torchvision.utils.save_image(rendering["refl_strength_map"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'metallic_{0:05d}.png'.format(idx)))
             torchvision.utils.save_image(rendering["rend_alpha"].clamp(0.0, 1.0)[None], os.path.join(vis_path, 'alpha_{0:05d}.png'.format(idx)))
 
-    ssim_v = np.array(ssims).mean()
-    psnr_v = np.array(psnrs).mean()
-    lpip_v = np.array(lpipss).mean()
-    fps = 1.0 / np.array(render_times).mean()
-    print('psnr:{}, ssim:{}, lpips:{}, fps:{}'.format(psnr_v, ssim_v, lpip_v, fps))
-    dump_path = os.path.join(model_path, name, 'metric.txt')
-    with open(dump_path, 'w') as f:
-        f.write('psnr:{}, ssim:{}, lpips:{}, fps:{}'.format(psnr_v, ssim_v, lpip_v, fps))
+    if not "traj" in name:
+        ssim_v = np.array(ssims).mean()
+        psnr_v = np.array(psnrs).mean()
+        lpip_v = np.array(lpipss).mean()
+        fps = 1.0 / np.array(render_times).mean()
+        print('psnr:{}, ssim:{}, lpips:{}, fps:{}'.format(psnr_v, ssim_v, lpip_v, fps))
+        dump_path = os.path.join(model_path, name, 'metric.txt')
+        with open(dump_path, 'w') as f:
+            f.write('psnr:{}, ssim:{}, lpips:{}, fps:{}'.format(psnr_v, ssim_v, lpip_v, fps))
 
 def render_sets(dataset: ModelParams, iteration: int, pipeline: PipelineParams, save_ims: bool, op, indirect, args):
     with torch.no_grad():
@@ -131,9 +134,14 @@ def render_sets(dataset: ModelParams, iteration: int, pipeline: PipelineParams, 
                 preprocess_fun = lambda x: np.roll(x, shift=x.shape[1] // 4, axis=1)
                 gaussians.replace_envmap(args.relight_envmap_path, preprocess_fun)
 
-        # render_set(dataset.model_path, "train", scene.getTrainCameras(), gaussians, pipeline, background, save_ims, op, args)
-        test_dir = "test" if not dataset.relight else os.path.join("relight", args.relight_envmap_path.split('/')[-1])
-        render_set(dataset.model_path, test_dir, scene.getTestCameras(), gaussians, pipeline, background, save_ims, op, args)
+        # render_set(dataset.model_path, "train", scene.getTrainCameras(), gaussians, pipeline, background, save_ims, op, args)]
+        if args.render_path:
+            views = generate_path(scene.getTrainCameras(), n_frames=240)
+            test_dir = "traj" if not dataset.relight else os.path.join("traj_relight", args.relight_envmap_path.split('/')[-1])
+        else:
+            views = scene.getTestCameras()
+            test_dir = "test" if not dataset.relight else os.path.join("relight", args.relight_envmap_path.split('/')[-1])
+        render_set(dataset.model_path, test_dir, views, gaussians, pipeline, background, save_ims, op, args)
 
         env_dict = gaussians.render_env_map()
         grid = [
@@ -157,12 +165,12 @@ if __name__ == "__main__":
     parser.add_argument("--iteration", default=-1, type=int)
     parser.add_argument("--save_images", action="store_true")
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--render_path", action="store_true")
     parser.add_argument("--relight_gt_path", default="")
     parser.add_argument("--relight_envmap_path", default="")
     parser.add_argument("--rescale_relighted", action="store_true")
 
     # Initialize system state (RNG)
-
     temp_args = parser.parse_args()
     models_path = temp_args.model_path
     exps = os.listdir(models_path)
